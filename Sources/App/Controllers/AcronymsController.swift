@@ -19,6 +19,16 @@ struct AcronymsController: RouteCollection  {
         acronymRoutes.delete(":acronymID", use: deleteHandler)
         acronymRoutes.put(":acronymID", use: updateHandler)
         acronymRoutes.get(":acronymID", "user", use: getUserForAcronymHandler)
+        acronymRoutes.get(":acronymID", "categories", use: getCategoriesForAcronym)
+        acronymRoutes.post(":acronymID", "categories", ":categoryID", use: addCategories)
+    }
+    
+    func getCategoriesForAcronym(_ req: Request) async throws -> [Category] {
+        guard let acronym = try await Acronym.find(req.parameters.get("acronymID"), on: req.db) else {
+            throw Abort(.notFound, reason: "Could not find acronym on database.")
+        }
+        
+        return try await acronym.$categories.get(on: req.db)
     }
     
     func getUserForAcronymHandler(_ req: Request) async throws -> User {
@@ -69,6 +79,21 @@ struct AcronymsController: RouteCollection  {
     
     func getAllAcronymsHandler(_ req: Request) async throws -> [Acronym] {
         try await Acronym.query(on: req.db).all()
+    }
+    
+    func addCategories( _ req: Request) async throws -> HTTPStatus {
+        
+        guard let acronym = try await Acronym.find(req.parameters.get("acronymID"), on: req.db) else {
+            throw Abort(.notFound, reason: "Could not find the acronym on the database.")
+        }
+        
+        guard let category = try await Category.find(req.parameters.get("categoryID"), on: req.db) else {
+            throw Abort(.notFound, reason: "Could not find category on the database")
+        }
+        
+        try await acronym.$categories.attach(category, on: req.db)
+        
+        return .created
     }
     
 }

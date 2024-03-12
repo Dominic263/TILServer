@@ -17,6 +17,7 @@ struct CategoriesController: RouteCollection {
         categoriesRoutes.get( use: getAllCategoriesHandler)
         categoriesRoutes.post(use: createCategoriesHandler)
         categoriesRoutes.get(":categoryID", use: getHandler)
+        categoriesRoutes.get(":categoryID", "acronyms", use: getAcronymsForCategory)
     }
     
     func getHandler(_ req: Request) async throws -> Category {
@@ -36,5 +37,13 @@ struct CategoriesController: RouteCollection {
     
     func getAllCategoriesHandler(_ req: Request) async throws -> [Category] {
         return try await Category.query(on: req.db).all()
+    }
+    
+    func getAcronymsForCategory(_ req: Request) async throws -> [Acronym] {
+        guard let category = try await Category.find(req.parameters.get("categoryID"), on: req.db) else {
+            throw Abort(.notFound, reason: "Could  not find Category on database.")
+        }
+        
+        return try await category.$acronyms.get(on: req.db)
     }
 }

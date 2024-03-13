@@ -10,6 +10,6 @@ credits: [Tim Condon]
 ## Author 
 
 [Dominic Ndondo]<br>
-Twitter: [@NdondoDominic] (https://twitter.com/NdondoDominic)<br>
+Twitter: [@NdondoDominic](https://twitter.com/NdondoDominic)<br>
 Email: dominic.ndondo@outlook.com<br>
 ShumbaTech ©2024 <br>

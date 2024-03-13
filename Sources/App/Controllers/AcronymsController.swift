@@ -13,15 +13,27 @@ struct AcronymsController: RouteCollection  {
     func boot(routes: Vapor.RoutesBuilder) throws {
         let acronymRoutes = routes.grouped("api", "acronym")
         
-        acronymRoutes.post( use: createHandler)
+        
         acronymRoutes.get( use: getAllAcronymsHandler)
         acronymRoutes.get(":acronymID", use: getHandler)
-        acronymRoutes.delete(":acronymID", use: deleteHandler)
-        acronymRoutes.put(":acronymID", use: updateHandler)
         acronymRoutes.get(":acronymID", "user", use: getUserForAcronymHandler)
         acronymRoutes.get(":acronymID", "categories", use: getCategoriesForAcronym)
-        acronymRoutes.post(":acronymID", "categories", ":categoryID", use: addCategories)
         acronymRoutes.get("search", use: searchHandler)
+        
+        // protect the routes so that only an authenticated user can access them
+        /*
+         Middlewares
+            tokenAuthMiddleware - ensures that the token is valid and not expired for the user
+            guardMiddleware - ensures that the user has been successfully authenticated and given permission to access the acronymRoutes
+         */
+        let tokenAuthMiddleware = Token.authenticator()
+        let guardMiddleware = User.guardMiddleware()
+        let tokenAuthGroup = acronymRoutes.grouped(tokenAuthMiddleware, guardMiddleware)
+        
+        tokenAuthGroup.post(use: createHandler)
+        tokenAuthGroup.put(":acronymID", use: updateHandler)
+        tokenAuthGroup.post(":acronymID", "categories", ":categoryID", use: addCategories)
+        tokenAuthGroup.delete(":acronymID", use: deleteHandler)
     }
     
     func searchHandler(_ req: Request) async throws -> [Acronym] {
@@ -56,6 +68,7 @@ struct AcronymsController: RouteCollection  {
     func updateHandler(_ req: Request) async throws -> Acronym  {
         
         let decodedAcronym = try req.content.decode(Acronym.self)
+        let user = try req.auth.require(User.self)
         
         guard let acronym = try await Acronym.find(req.parameters.get("acronymID"), on: req.db) else {
             throw Abort(.notFound, reason: "Could not find the acronym on the database.")
@@ -63,6 +76,7 @@ struct AcronymsController: RouteCollection  {
         
         acronym.short = decodedAcronym.short
         acronym.long = decodedAcronym.long
+        acronym.$user.id = try user.requireID()
         try await acronym.save(on: req.db)
         
         return acronym
@@ -86,7 +100,8 @@ struct AcronymsController: RouteCollection  {
     
     func createHandler(_ req: Request) async throws -> Acronym {
         let data = try req.content.decode(CreateAcronymData.self)
-        let acronym = Acronym(short: data.short, long: data.long, userID: data.userID)
+        let user = try req.auth.require(User.self)
+        let acronym = try Acronym(short: data.short, long: data.long, userID: user.requireID())
         try await acronym.save(on: req.db)
         return acronym
     }
@@ -116,5 +131,4 @@ struct AcronymsController: RouteCollection  {
 struct CreateAcronymData: Codable {
     let short: String
     let long: String
-    let userID: UUID
 }

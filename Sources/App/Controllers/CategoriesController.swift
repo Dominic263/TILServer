@@ -25,7 +25,6 @@ struct CategoriesController: RouteCollection {
         guard let category = try await Category.find(categoryID, on: req.db) else {
             throw Abort(.notFound, reason: "Could not find category on database.")
         }
-        
         return category
     }
     
@@ -43,7 +42,6 @@ struct CategoriesController: RouteCollection {
         guard let category = try await Category.find(req.parameters.get("categoryID"), on: req.db) else {
             throw Abort(.notFound, reason: "Could  not find Category on database.")
         }
-        
         return try await category.$acronyms.get(on: req.db)
     }
 }

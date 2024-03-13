@@ -24,25 +24,28 @@ struct UsersController: RouteCollection {
         guard let user = try await User.find(req.parameters.get("userID"), on: req.db) else {
             throw Abort(.notFound, reason: "Could not find the user on the database.")
         }
-        
         return try await user.$acronyms.get(on: req.db)
     }
     
-    func getAllUsersHandler(_ req: Request) async throws -> [User] {
-        try await User.query(on: req.db).all()
+    func getAllUsersHandler(_ req: Request) async throws -> [User.Public] {
+        try await User.query(on: req.db).all().map { user in
+            user.convertToPublic()
+        }
     }
     
-    func getHandler(_ req: Request) async throws -> User {
+    func getHandler(_ req: Request) async throws -> User.Public {
         guard let user = try await User.find(req.parameters.get("userID"), on: req.db) else {
             throw Abort(.notFound, reason: "Could not find user on the database.")
         }
-        
-        return user
+        return user.convertToPublic()
     }
     
-    func createHandler(_ req: Request) async throws -> User {
+    func createHandler(_ req: Request) async throws -> User.Public {
         let user = try req.content.decode(User.self)
+        
+        user.password = try Bcrypt.hash(user.password)
+        
         try await user.save(on: req.db)
-        return user
+        return user.convertToPublic()
     }
 }

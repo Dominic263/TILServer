@@ -21,6 +21,20 @@ struct AcronymsController: RouteCollection  {
         acronymRoutes.get(":acronymID", "user", use: getUserForAcronymHandler)
         acronymRoutes.get(":acronymID", "categories", use: getCategoriesForAcronym)
         acronymRoutes.post(":acronymID", "categories", ":categoryID", use: addCategories)
+        acronymRoutes.get("search", use: searchHandler)
+    }
+    
+    func searchHandler(_ req: Request) async throws -> [Acronym] {
+        guard let searchTerm = req.query[String.self, at: "term"] else {
+            throw Abort(.badRequest)
+        }
+        
+        return try await Acronym.query(on: req.db)
+            .group(.or) { query in
+                query.filter(\.$short == searchTerm)
+                query.filter(\.$long == searchTerm)
+            }
+            .all()
     }
     
     func getCategoriesForAcronym(_ req: Request) async throws -> [Category] {
@@ -31,12 +45,12 @@ struct AcronymsController: RouteCollection  {
         return try await acronym.$categories.get(on: req.db)
     }
     
-    func getUserForAcronymHandler(_ req: Request) async throws -> User {
+    func getUserForAcronymHandler(_ req: Request) async throws -> User.Public {
         guard let acronym = try await Acronym.find(req.parameters.get("acronymID"), on: req.db) else {
             throw Abort(.notFound, reason: "Could not find acronym on database.")
         }
         
-        return try await acronym.$user.get(on: req.db)
+        return try await acronym.$user.get(on: req.db).convertToPublic()
     }
     
     func updateHandler(_ req: Request) async throws -> Acronym  {
@@ -99,7 +113,6 @@ struct AcronymsController: RouteCollection  {
 }
 
 // Domain Transfer Objects (DTO)
-
 struct CreateAcronymData: Codable {
     let short: String
     let long: String

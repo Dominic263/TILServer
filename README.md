@@ -9,5 +9,5 @@ credits: Tim Condon
 ## Author 
 
 Dominic Ndondo 
-[email](dominic.ndondo@outlook.com)
+Email: dominic.ndondo@outlook.com
 @ShumbaTech 2024
